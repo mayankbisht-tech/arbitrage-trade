@@ -29,49 +29,60 @@ def fetch_data():
     binance = ccxt.binance()
     kucoin = ccxt.kucoin()
     
-    b_ob = binance.fetch_order_book('BTC/USDT')
-    k_ob = kucoin.fetch_order_book('BTC/USDT')
+    symbols = ['BTC/USDT', 'ETH/USDT', 'SOL/USDT', 'AVAX/USDT', 'LINK/USDT']
+    events = []
     
-    buy_price = b_ob['asks'][0][0]
-    buy_liquidity = b_ob['asks'][0][1]
-    sell_price = k_ob['bids'][0][0]
-    sell_liquidity = k_ob['bids'][0][1]
+    for symbol in symbols:
+        try:
+            b_ob = binance.fetch_order_book(symbol)
+            k_ob = kucoin.fetch_order_book(symbol)
+            
+            buy_price = b_ob['asks'][0][0]
+            buy_liquidity = b_ob['asks'][0][1]
+            sell_price = k_ob['bids'][0][0]
+            sell_liquidity = k_ob['bids'][0][1]
+            
+            gross_spread = (sell_price - buy_price) / buy_price * 100
+            net_spread = gross_spread - 0.2
+            
+            if net_spread > 0:
+                decision = "EXECUTE"
+                decision_reason = f"Buy at {buy_price}, Sell at {sell_price}, Spread: {net_spread:.2f}%"
+            else:
+                decision = "IGNORE"
+                decision_reason = "No profit"
+            
+            events.append({
+                "timestamp": int(time.time()),
+                "symbol": symbol,
+                "buy_exchange": "Binance",
+                "sell_exchange": "KuCoin",
+                "buy_price": buy_price,
+                "sell_price": sell_price,
+                "buy_liquidity": buy_liquidity,
+                "sell_liquidity": sell_liquidity,
+                "gross_spread": round(gross_spread, 4),
+                "net_spread": round(net_spread, 4),
+                "decision": decision,
+                "decision_reason": decision_reason
+            })
+        except Exception as e:
+            print(f"Error fetching {symbol}: {e}")
     
-    gross_spread = (sell_price - buy_price) / buy_price * 100
-    net_spread = gross_spread - 0.2
-    
-    if net_spread > 0:
-        decision = "EXECUTE"
-        decision_reason = f"Buy at {buy_price}, Sell at {sell_price}, Spread: {net_spread:.2f}%"
-    else:
-        decision = "IGNORE"
-        decision_reason = "No profit"
-    
-    return {
-        "timestamp": int(time.time()),
-        "symbol": 'BTC/USDT',
-        "buy_exchange": "Binance",
-        "sell_exchange": "KuCoin",
-        "buy_price": buy_price,
-        "sell_price": sell_price,
-        "buy_liquidity": buy_liquidity,
-        "sell_liquidity": sell_liquidity,
-        "gross_spread": round(gross_spread, 4),
-        "net_spread": round(net_spread, 4),
-        "decision": decision,
-        "decision_reason": decision_reason
-    }
+    return events
 
 def main():
     clear_database()
+    print("Starting 2-second monitoring for BTC, ETH, SOL, AVAX, LINK...")
     
     count = 0
     try:
         while True:
-            event = fetch_data()
-            insertRow(event)
-            count += 1
-            print(f"{count}: {event['decision']} - ${event['buy_price']} -> ${event['sell_price']} ({event['net_spread']}%)")
+            events = fetch_data()
+            for event in events:
+                insertRow(event)
+                count += 1
+                print(f"{count}: {event['symbol']} {event['decision']} - ${event['buy_price']} -> ${event['sell_price']} ({event['net_spread']}%)")
             time.sleep(2)
     except KeyboardInterrupt:
         print(f"\nStopped. Total records: {count}")
