@@ -6,7 +6,7 @@ import os
 ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
 sys.path.append(ROOT_DIR)
 
-from backend.databases.db import get_conn, clear_database
+from backend.databases.db import get_conn
 
 def insertRow(event):
     conn = get_conn()
@@ -66,26 +66,17 @@ def fetch_data():
                 "decision": decision,
                 "decision_reason": decision_reason
             })
-        except Exception as e:
-            print(f"Error fetching {symbol}: {e}")
+        except:
+            pass
     
     return events
 
 def main():
-    clear_database()
-    print("Starting 2-second monitoring for BTC, ETH, SOL, AVAX, LINK...")
-    
-    count = 0
-    try:
-        while True:
-            events = fetch_data()
-            for event in events:
-                insertRow(event)
-                count += 1
-                print(f"{count}: {event['symbol']} {event['decision']} - ${event['buy_price']} -> ${event['sell_price']} ({event['net_spread']}%)")
-            time.sleep(2)
-    except KeyboardInterrupt:
-        print(f"\nStopped. Total records: {count}")
+    while True:
+        events = fetch_data()
+        for event in events:
+            insertRow(event)
+        time.sleep(2)
 
 if __name__ == "__main__":
     main()
