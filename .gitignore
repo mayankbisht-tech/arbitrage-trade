@@ -1,0 +1,28 @@
+# Python
+__pycache__/
+*.pyc
+
+# Databases
+*.db
+*.sqlite3
+
+# Environment
+.env
+
+# Data & Models
+data/
+models/
+*.pkl
+*.joblib
+
+# Logs
+*.log
+
+# IDE
+.vscode/
+.idea/
+
+# Ignore database files
+*.db
+*.sqlite
+*.sqlite3
